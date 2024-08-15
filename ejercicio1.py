@@ -2,16 +2,20 @@ from graphviz import Digraph
 import networkx as nx
 import matplotlib.pyplot as plt
 
+epsilon = 'ε'
+operadores = {'|', '.', '*', '+', '?'}
+precedencia_operador = {
+    '(': 1,
+    '|': 2,
+    '.': 3,
+    '?': 4,
+    '*': 4,
+    '+': 4,
+}
+
+
 def get_precedence(op):
-    precedences = {
-        '(': 1,
-        '|': 2,
-        '.': 3,
-        '?': 4,
-        '*': 4,
-        '+': 4,
-    }
-    return precedences.get(op, 0)
+    return precedencia_operador.get(op, 0)
 
 def format_reg_ex(regex):
     formatted = []
@@ -251,21 +255,33 @@ def thompson_construction(ast_node):
 
     return afn
 
+def epsilon_closure(afn, states):
+    closure = set(states)
+    stack = list(states)
+
+    while stack:
+        state = stack.pop()
+        for symbol, next_state in afn.transitions.get(state, []):
+            if symbol == 'ε' and next_state not in closure:
+                closure.add(next_state)
+                stack.append(next_state)
+
+    return closure
+
 def simulate_afn(afn, string):
-    current_states = {afn.initial_state}
+    current_states = epsilon_closure(afn, {afn.initial_state})
 
     for char in string:
         next_states = set()
         for state in current_states:
             for symbol, next_state in afn.transitions.get(state, []):
-                if symbol == char or symbol == 'ε':
+                if symbol == char:
                     next_states.add(next_state)
-        current_states = next_states
 
-    if current_states & afn.accepting_states:
-        return "sí"
-    else:
-        return "no"
+        current_states = epsilon_closure(afn, next_states)
+
+    return "sí" if current_states & afn.accepting_states else "no"
+
 def draw_afn_networkx(afn, index):
     G = nx.DiGraph()
 
@@ -280,14 +296,17 @@ def draw_afn_networkx(afn, index):
     pos = nx.spring_layout(G)
     labels = nx.get_edge_attributes(G, 'label')
 
-    plt.figure(figsize=(8, 6))
-    nx.draw(G, pos, with_labels=True, node_size=500, node_color='lightblue', font_size=10, font_weight='bold')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
-    
+    plt.figure(figsize=(10, 8))
+    nx.draw_networkx_nodes(G, pos, node_size=700, node_color='lightblue', alpha=0.9)
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), arrowstyle='->', arrowsize=15, edge_color='black')
+    nx.draw_networkx_labels(G, pos, font_size=12, font_color='black')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_color='red')
+
     filename = f'grafo{index}.png'
     plt.savefig(filename)
-    plt.show()
+    plt.close() 
     print(f"AFN guardado en {filename}")
+
 
 def procesar_expresion_regular(exp, index):
     postfix = infix_a_postfix(exp)
