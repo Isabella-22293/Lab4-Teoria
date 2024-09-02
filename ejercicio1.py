@@ -71,6 +71,24 @@ def postfix_a_ast(postfix):
     
     return stack.pop()
 
+# Función para dibujar el AST utilizando Graphviz
+def draw_ast(node, filename='ast'):
+    dot = Digraph()
+    
+    def add_nodes_edges(node):
+        if node is not None:
+            dot.node(str(id(node)), node.value)
+            if node.left:
+                dot.edge(str(id(node)), str(id(node.left)))
+                add_nodes_edges(node.left)
+            if node.right:
+                dot.edge(str(id(node)), str(id(node.right)))
+                add_nodes_edges(node.right)
+
+    add_nodes_edges(node)
+    dot.render(filename, format='png', cleanup=True)
+    print(f"AST generado y guardado en {filename}.png")
+
 # Construcción del AFN utilizando el algoritmo de Thompson
 def construir_afn_thompson(node):
     if node.value == '|':  # Unión
@@ -178,8 +196,9 @@ def process_file(filename):
 
                 try:
                     ast = postfix_a_ast(postfix)
+                    draw_ast(ast)  # Dibuja el AST
                     afn = construir_afn_thompson(ast)
-                    draw_afn(afn)
+                    draw_afn(afn)  # Dibuja el AFN
                     
                     cadena = input("Ingrese la cadena a evaluar: ")
                     resultado = simular_afn(afn, cadena)
